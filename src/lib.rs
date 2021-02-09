@@ -44,7 +44,7 @@ fn interactive_edit(txt: &str) -> Result<String> {
     gut::fs::write_to_file(&tmpfile, txt)?;
 
     let editor = std::env::var("EDITOR").unwrap_or("vi".to_string());
-    info!("Edit renamings using {}", editor);
+    println!("Edit renamings using {}", editor);
 
     let _ = std::process::Command::new(editor)
         .arg(tmpfile.path())
@@ -86,7 +86,6 @@ mod rename {
     impl Rename {
         /// Direct renaming. Return false if found naming conflict
         fn apply(&self) -> Result<bool> {
-            info!("{}", self);
             if self.dest.exists() {
                 // found file name conflict
                 Ok(false)
@@ -139,7 +138,7 @@ mod rename {
 
         // FIXME: handle rules that involving renaming conflicts
         if !remained.is_empty() {
-            info!("found {} items: renaming conflicts", remained.len());
+            println!("found {} items: renaming conflicts", remained.len());
             resolve_renaming_conflicts(&remained)?;
         }
 
@@ -199,7 +198,17 @@ fn test_file_renamings() {
 // rename:1 ends here
 
 // [[file:../rename.note::*entry][entry:1]]
+use structopt::*;
+
+#[derive(StructOpt)]
+/// Rename files interactively
+struct Cli {
+    //
+}
+
 pub fn enter_main() -> Result<()> {
+    let args = Cli::from_args();
+
     // 1. call skim, generate selected source file names
     let files = self::find::find_files();
 
@@ -210,8 +219,18 @@ pub fn enter_main() -> Result<()> {
     // 3. compare changes, generate renaming rules
     let rules = find_file_renaming_rules(&s_old, &s_new);
 
-    // 4. apply renaming, and resolve conflicts
-    self::rename::apply_file_renaming_rules(&rules)?;
+    // 4. apply renaming, and resolve conflicts if necessary
+    if !rules.is_empty() {
+        for r in rules.iter() {
+            println!("{}", r);
+        }
+        let yes = promptly::prompt_default("Continue to rename?", true)?;
+        if yes {
+            self::rename::apply_file_renaming_rules(&rules)?;
+        } else {
+            eprintln!("canceled");
+        }
+    }
 
     Ok(())
 }
