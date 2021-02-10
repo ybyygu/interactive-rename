@@ -136,14 +136,16 @@ mod rename {
     // a => b
     // b => a
     fn resolve_renaming_conflicts(rules: &[&Rename]) -> Result<()> {
-        println!("resolving {} renaming conflicts ...", rules.len());
+        println!("Resolving {} renaming conflicts ...", rules.len());
         let tmp_files: Result<Vec<_>> = rules
             .iter()
             .map(|r| {
                 if let Some(d) = r.source.parent() {
+                    // create a temp file and then remove it
+                    // we only need a valid temp file name
                     let p = tempfile::NamedTempFile::new_in(d)?
                         .into_temp_path()
-                        .keep()?;
+                        .to_path_buf();
                     Ok(p)
                 } else {
                     bail!("failed to get parent dir: {:?}", r.source);
@@ -154,8 +156,6 @@ mod rename {
         let tmp_files = tmp_files.context("tmp file for avoiding naming conflicts")?;
         // renaming files stage 1: move `source` file to a temp location
         for (r, tmp) in rules.iter().zip(tmp_files.iter()) {
-            // we only need a valid temp file name
-            std::fs::remove_file(tmp)?;
             std::fs::rename(&r.source, tmp)
                 .with_context(|| format!("mv {:?} {:?}", r.source, tmp))?;
         }
