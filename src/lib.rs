@@ -15,8 +15,6 @@ mod base {
     pub struct Rename {
         pub source: PathBuf,
         pub dest: PathBuf,
-        // for avoiding renaming conflicts
-        pub tmp: Option<PathBuf>,
     }
 
     impl Rename {
@@ -24,7 +22,6 @@ mod base {
             Self {
                 source: source.as_ref().into(),
                 dest: dest.as_ref().into(),
-                tmp: None,
             }
         }
     }
@@ -82,6 +79,7 @@ mod find {
 // [[file:../rename.note::*rename][rename:1]]
 mod rename {
     use super::*;
+    use base::Rename;
 
     impl Rename {
         /// Direct renaming. Return false if found naming conflict
@@ -95,16 +93,6 @@ mod rename {
                 // yes
                 Ok(true)
             }
-        }
-
-        /// Rename `source` file to a temporary file
-        fn apply_stage1(&mut self) {
-            //
-        }
-
-        /// Rename the temporary file to `dest` file
-        fn apply_stage2(&mut self) {
-            //
         }
     }
 
@@ -136,17 +124,47 @@ mod rename {
             })
             .collect();
 
-        // FIXME: handle rules that involving renaming conflicts
+        // handle rules that involving renaming conflicts
         if !remained.is_empty() {
-            println!("found {} items: renaming conflicts", remained.len());
             resolve_renaming_conflicts(&remained)?;
         }
 
         Ok(())
     }
 
+    // Possible scenery
+    // a => b
+    // b => a
     fn resolve_renaming_conflicts(rules: &[&Rename]) -> Result<()> {
-        todo!()
+        println!("resolving {} renaming conflicts ...", rules.len());
+        let tmp_files: Result<Vec<_>> = rules
+            .iter()
+            .map(|r| {
+                if let Some(d) = r.source.parent() {
+                    let p = tempfile::NamedTempFile::new_in(d)?
+                        .into_temp_path()
+                        .keep()?;
+                    Ok(p)
+                } else {
+                    bail!("failed to get parent dir: {:?}", r.source);
+                }
+            })
+            .collect();
+
+        let tmp_files = tmp_files.context("tmp file for avoiding naming conflicts")?;
+        // renaming files stage 1: move `source` file to a temp location
+        for (r, tmp) in rules.iter().zip(tmp_files.iter()) {
+            // we only need a valid temp file name
+            std::fs::remove_file(tmp)?;
+            std::fs::rename(&r.source, tmp)
+                .with_context(|| format!("mv {:?} {:?}", r.source, tmp))?;
+        }
+        // renaming files stage 2: move the temp file to `dest`
+        for (r, tmp) in rules.iter().zip(tmp_files.iter()) {
+            std::fs::rename(tmp, &r.dest).with_context(|| format!("mv {:?} {:?}", tmp, r.dest))?;
+        }
+
+        Ok(())
     }
 
     // find file renaming rules line by line between old text and new text
@@ -171,29 +189,27 @@ mod rename {
             })
             .collect()
     }
-}
 
-use self::base::Rename;
-use self::rename::*;
-#[test]
-fn test_file_renamings() {
-    let renames = find_file_renaming_rules("a", "b");
-    assert_eq!(renames.len(), 1);
+    #[test]
+    fn test_file_renamings() {
+        let renames = find_file_renaming_rules("a", "b");
+        assert_eq!(renames.len(), 1);
 
-    let old = "a\nb";
-    let new = "b\nc";
-    let renames = find_file_renaming_rules(old, new);
-    assert_eq!(renames.len(), 2);
+        let old = "a\nb";
+        let new = "b\nc";
+        let renames = find_file_renaming_rules(old, new);
+        assert_eq!(renames.len(), 2);
 
-    let old = "a";
-    let new = "b\nc";
-    let renames = find_file_renaming_rules(old, new);
-    assert_eq!(renames.len(), 0);
+        let old = "a";
+        let new = "b\nc";
+        let renames = find_file_renaming_rules(old, new);
+        assert_eq!(renames.len(), 0);
 
-    let old = "a\nb";
-    let new = "a\nc";
-    let renames = find_file_renaming_rules(old, new);
-    assert_eq!(renames.len(), 1);
+        let old = "a\nb";
+        let new = "a\nc";
+        let renames = find_file_renaming_rules(old, new);
+        assert_eq!(renames.len(), 1);
+    }
 }
 // rename:1 ends here
 
@@ -217,7 +233,7 @@ pub fn enter_main() -> Result<()> {
     let s_new = interactive_edit(&s_old)?;
 
     // 3. compare changes, generate renaming rules
-    let rules = find_file_renaming_rules(&s_old, &s_new);
+    let rules = self::rename::find_file_renaming_rules(&s_old, &s_new);
 
     // 4. apply renaming, and resolve conflicts if necessary
     if !rules.is_empty() {
@@ -231,6 +247,7 @@ pub fn enter_main() -> Result<()> {
             eprintln!("canceled");
         }
     }
+    println!("Done!");
 
     Ok(())
 }
