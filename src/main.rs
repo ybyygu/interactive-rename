@@ -2,7 +2,7 @@
 use gut::prelude::*;
 
 pub fn main() -> Result<()> {
-    rename::enter_main()?;
+    irename::enter_main()?;
 
     Ok(())
 }
