@@ -57,10 +57,11 @@ mod find {
     use super::*;
     use skim::prelude::*;
 
-    pub fn find_files() -> Vec<String> {
+    pub fn find_files(query_str: Option<&str>) -> Vec<String> {
         let options = SkimOptionsBuilder::default()
             .multi(true)
             .prompt(Some("search> "))
+            .query(query_str)
             .build()
             .unwrap();
 
@@ -219,14 +220,14 @@ use structopt::*;
 #[derive(StructOpt)]
 /// Rename files interactively
 struct Cli {
-    //
+    query: Option<String>,
 }
 
 pub fn enter_main() -> Result<()> {
     let args = Cli::from_args();
 
     // 1. call skim, generate selected source file names
-    let files = self::find::find_files();
+    let files = self::find::find_files(args.query.as_deref());
 
     // 2. call vim, interactive edit
     let s_old = files.join("\n");
