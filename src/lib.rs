@@ -231,6 +231,11 @@ pub fn enter_main() -> Result<()> {
 
     // 2. call vim, interactive edit
     let s_old = files.join("\n");
+    if files.is_empty() || &s_old == "." {
+        println!("No valid files selected.");
+        return Ok(());
+    }
+
     let s_new = interactive_edit(&s_old)?;
 
     // 3. compare changes, generate renaming rules
