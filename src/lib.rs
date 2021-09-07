@@ -3,7 +3,10 @@ use gut::prelude::*;
 // imports:1 ends here
 
 // [[file:../rename.note::*mods][mods:1]]
-
+mod common {
+    pub use gut::prelude::*;
+    pub use std::path::{Path, PathBuf};
+}
 // mods:1 ends here
 
 // [[file:../rename.note::*base][base:1]]
@@ -40,7 +43,11 @@ fn interactive_edit(txt: &str) -> Result<String> {
     let tmpfile = tempfile::NamedTempFile::new()?;
     gut::fs::write_to_file(&tmpfile, txt)?;
 
-    let editor = std::env::var("EDITOR").unwrap_or("vi".to_string());
+    let editor = if cfg!(target_os = "windows") {
+        "notepad.exe".to_string()
+    } else {
+        std::env::var("EDITOR").unwrap_or("vi".to_string())
+    };
     println!("Edit renamings using {}", editor);
 
     let _ = std::process::Command::new(editor)
