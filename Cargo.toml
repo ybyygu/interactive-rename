@@ -1,16 +1,19 @@
-# [[file:rename.note::*cargo][cargo:1]]
+# [[file:rename.note::2a2c7e27][2a2c7e27]]
 [package]
 name = "irename"
-version = "0.0.3"
+version = "0.1.0"
 edition = "2018"
 authors = ["Wenping Guo <ybyygu@gmail.com>"]
 
 [dependencies]
 structopt = "0.3"
 skim = "0.9"
-gut = {version="0.1.7", package="gchemol-gut"}
-tempfile = "3"    
+gut = { version = "0.3", package = "gchemol-gut" }
+tempfile = "3"
 promptly = "0.3"
 
+# workspace independent
+[workspace]
+
 [dev-dependencies]
-# cargo:1 ends here
+# 2a2c7e27 ends here

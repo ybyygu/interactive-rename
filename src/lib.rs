@@ -84,7 +84,7 @@ mod find {
 }
 // find:1 ends here
 
-// [[file:../rename.note::*rename][rename:1]]
+// [[file:../rename.note::0388be95][0388be95]]
 mod rename {
     use super::*;
     use base::Rename;
@@ -97,6 +97,7 @@ mod rename {
                 Ok(false)
             } else {
                 // correctly renamed?
+                println!("renaming {:?} => {:?}", self.source, self.dest);
                 std::fs::rename(&self.source, &self.dest)?;
                 // yes
                 Ok(true)
@@ -117,6 +118,14 @@ mod rename {
         // 2. each rule should have unique dest file
         let s: std::collections::HashSet<_> = rules.iter().map(|r| &r.dest).collect();
         if s.len() != n {
+            // show duplicated items
+            let mut tmp = vec![];
+            for dest in rules.iter().map(|r| &r.dest) {
+                if tmp.contains(dest) {
+                    eprintln!("{}", dest.display());
+                }
+                tmp.push(dest.to_owned());
+            }
             bail!("Found duplicte items in dest files!");
         }
 
@@ -151,9 +160,7 @@ mod rename {
                 if let Some(d) = r.source.parent() {
                     // create a temp file and then remove it
                     // we only need a valid temp file name
-                    let p = tempfile::NamedTempFile::new_in(d)?
-                        .into_temp_path()
-                        .to_path_buf();
+                    let p = tempfile::NamedTempFile::new_in(d)?.into_temp_path().to_path_buf();
                     Ok(p)
                 } else {
                     bail!("failed to get parent dir: {:?}", r.source);
@@ -164,8 +171,7 @@ mod rename {
         let tmp_files = tmp_files.context("tmp file for avoiding naming conflicts")?;
         // renaming files stage 1: move `source` file to a temp location
         for (r, tmp) in rules.iter().zip(tmp_files.iter()) {
-            std::fs::rename(&r.source, tmp)
-                .with_context(|| format!("mv {:?} {:?}", r.source, tmp))?;
+            std::fs::rename(&r.source, tmp).with_context(|| format!("mv {:?} {:?}", r.source, tmp))?;
         }
         // renaming files stage 2: move the temp file to `dest`
         for (r, tmp) in rules.iter().zip(tmp_files.iter()) {
@@ -219,7 +225,7 @@ mod rename {
         assert_eq!(renames.len(), 1);
     }
 }
-// rename:1 ends here
+// 0388be95 ends here
 
 // [[file:../rename.note::*entry][entry:1]]
 use structopt::*;
